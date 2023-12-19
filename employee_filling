@@ -1,0 +1,52 @@
+<?php
+// пример заполнения таблицы сотрудников
+$JobTitle = 'Кладовщик,Начальник смены,Диспетчер,Старший оператор,Старший Кладовщик';
+$JobTitle = explode(',',$JobTitle);
+function value_to_sql_query ($value)
+{
+    if (gettype($value) == 'string'){
+        $value = "'" . $value . "'";
+        return $value;
+    }
+    if (gettype($value == 'integer') || gettype($value == 'double'))
+    {
+        return $value;
+    }
+}
+
+// случайные данные по сотрудникам беру через API с сайта https://randomdatatools.ru/developers/
+$count = 20;
+$param = 'LastName,FirstName,FatherName,Phone,';
+//Получение нескольких генераций только необходимых параметров
+$api_query = 'https://api.randomdatatools.ru/?count=' . $count . '&params=' . $param;
+$api = file_get_contents($api_query);	
+//Загружаем данные через API только необходимых параметров: фамилия, имя, отчество, номер телефона, логин, пароль и адрес электронной почты
+$data = json_decode($api, true);	//Декодируем полученную строку JSON
+
+//телефон записываем в формате "(xxx) xxx-xx-xx"
+$offset = 3;
+foreach ($data as $key=>$value)
+{
+    $data[$key]['Phone'] = substr($data[$key]['Phone'],$offset,strlen($data[$key]['Phone']) - $offset);
+}
+
+
+$connection = new mysqli('localhost', 'root', 'mysql', 'transitwarehouse');
+if ($connection->connect_error) die ('Ошибка подключения к базе данных');
+
+
+for ($i=0; $i<count($data); $i++)
+{
+    $sql_query = '';
+    $sql_query .= "INSERT INTO employee(SurnameEmployee, FirstnameEmployee, LastnameEmployee, JobTitle, PhoneNumber) VALUES(". 
+    value_to_sql_query($data[$i]['LastName']) . "," . 
+    value_to_sql_query($data[$i]['FirstName']) . "," . 
+    value_to_sql_query($data[$i]['FatherName']) . "," .
+    value_to_sql_query($JobTitle[array_rand($JobTitle)]) . ',' . 
+    value_to_sql_query($data[$i]['Phone']) . ');';
+    $result = $connection->query($sql_query);
+    if (!$result) {die ('Ошибка запроса');}
+    else echo "Успешное выполнение запроса $i <br>";
+
+
+}
